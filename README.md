@@ -1,11 +1,80 @@
+# Udacity Self-Driving Car Engineer Nanodegree
+# Path Planning Project
+
+## Introduction: path planning in highway
+Given: map waypoints, ego car state (location & speed), other cars' state.
+
+Target: drive a car safely and effciently to pass through others cars, with avoding traffic collision, keeping a enough high speed, avoding breaking traffic limits, avoding reaching maximum acceleration and jerk.
+
+Steps:
+
+1. get nearby waypoints of the ego car
+2. intepolate nearby waypoints
+3. get ego car state
+4. get other cars' states
+5. check check whether some other car is left or right to our car
+6. find the best trajectory through which the ego car should move
+7. make a new path for the ego car
+
+## Detail
+
+### 1. get nearby waypoints of the ego car
+
+Given ego car state including car location information, we retrieve the cloest waypoint in front of ego car and 10 nearby waypoints from the map (contained in `highway_map.csv`). Code: line 359~373 in main.cpp.
+
+### 2. intepolate nearby waypoints.
+
+intepolate nearway waypoints in intepolation unit of 0.2 meter, which is useful for finding the best trajectory in step 6. The smaller the intepolation unit is, the smoother the found trajectory is. Code: line 375~397 in main.cpp.
+
+### 3. get ego car state
+
+If simulator gives the previous generated trajectory for ego car, use the last three to determine ego car's state. In this condition, ego car's state is in fact assumed future state, handing latency of simulator-mainprogram communication. If not, use returned ego car's state directly, setting speed and accelration equals 0. Code: line 400~418 in main.cpp.
+
+### 4. get other cars' states
+
+Generate s and d positions for other vehicles with assumed constant speed. Code: line 425~440 in main.cpp.
+
+
+### 5. check check whether some other car is left or right to our car.
+
+It is fatal to check whether some other car is beside us. If there is nothing in the left, we have option to change to the left lane. Code: line 444~458 in main.cpp.
+
+### 6. find the best trajectory through which the ego car should move
+
+Given the ego car's and other cars' states, the best trajectory of moving ego car is as follows:
+
+1. for each action (stay in the current lane, move to the left lane, move to the right lane), a target (frenet position) is given based on the predicted traffic condition (line 50~108 in vehicle.cpp). 
+Code: line 467~481 in main.cpp.
+2. for each action and the corresponding target, jerk-minimizing trajectory connecting the current frenet position to the target frenet position is made (line 133~163 in vehicle.app).
+3. to find which trajectory is best, we rely on a hybrid cost mixing: car collision, distance to the cloest car, speed, spatial shift from middle lane, spatial shift from the middle of the lane, acceletion, jerk(costs.h). Their weights (in order) are 10000,1,1000,10,100,10,10, which are based on tweaking.
+
+Code: line 467~481 in main.cpp.
+
+### 7. make a new path for the ego car
+
+Given the best trajectory for ego car, we make a new path (lists of `x` and `y`) guiding ego car to run. First we get the coarse trajectory in frenet s axis, taht is the concatenation of the last two points of the unused previous path, 25-meter-ahead point, 50-meter-ahead point. The coarse trajectory for x and y can be computed by transfroming frenet coordinates to cartesian coordinates.
+
+The speed increases or decreases in a fixed step if the speed differs from the target speed by the pre-defined gap. The speed helps us yield a dense s trajectory, from which we get dense x trajectory and y trajectory by spline interpolation tool. 
+
+Concatenating previous path and dense x/y trajectory gives us the next path ego car should move.
+Code: line 485~555 in main.cpp
+
+
+## Conclusion
+This solution performs acceptable and safely runs for over 20 mins in testing. Ego car has no better idea but slowly following the car ahead, when three lanes are all blocked. 
+
+![a slow example](./slow.png)
+
+*the description below is Udacity's original README for the project repo*
+
+---
+
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
    
-### Simulator.
-You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
+### Simulator. You can download the Term3 Simulator BETA which contains the Path Planning Project from the [releases tab](https://github.com/udacity/self-driving-car-sim/releases).
 
-### Goals
-In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
+In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 50 m/s^3.
 
 #### The map of the highway is in data/highway_map.txt
 Each waypoint in the list contains  [x,y,s,dx,dy] values. x and y are the waypoint's map coordinate position, the s value is the distance along the road to get to that waypoint in meters, the dx and dy values define the unit normal vector pointing outward of the highway loop.
@@ -134,7 +203,3 @@ that's just a guess.
 
 One last note here: regardless of the IDE used, every submitted project must
 still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
